@@ -1,0 +1,85 @@
+<?php  
+
+class ActivityController extends Muzyka_Admin
+{
+
+  protected $activityModel;
+  protected $userloggedin;
+  protected $registryService;
+
+    public function init()
+    {
+       parent::init();
+       $this->activityModel = Application_Service_Utilities::getModel('Activity');
+       $this->userloggedin = new Zend_Session_Namespace('user');
+       $this->registryService = Application_Service_Registry::getInstance();
+    }
+
+
+    public function indexAction()
+    {
+      $activity = $this->activityModel->getRegistryEntitiesByName('Types of Activity' , 'Name');
+
+      $this->setDetailedSection('Lista rejestrów');
+
+        $paginator = $this->activityModel->getList(["`status` = ?" => 0]);
+
+        $this->view->paginator = $paginator;
+
+    }
+
+    public function ajaxAddActivityAction()
+    {
+        $this->setDialogAction();
+        $activity = $this->activityModel->getActivity("Types of Activity");
+
+        $this->view->dialogTitle = "Schedule an activity";
+        $this->view->activityTypes = $activity;
+        $this->view->userlogged = $this->userloggedin->user->login;
+    }
+
+    public function ajaxEditActivityAction()
+    {
+        $req = $this->getRequest();
+        $activityId = $req->getParam('id');
+        $this->setDialogAction();
+
+        $row = $this->activityModel->getFull([
+          'id' => $activityId
+        ], true);
+        $activity = $this->activityModel->getActivity("Types of Activity");
+      
+        $this->view->data = $row;
+        $this->view->userlogged = $this->userloggedin->user->login;
+        $this->view->dialogTitle = "Edit activity ";
+        $this->view->activityId =  $activityId;
+        $this->view->activityTypes = $activity;
+    }
+    public function saveActivityAction()
+    {
+         $data = $this->getRequest()->getPost();
+         $form_data = $data['parameter'];
+         $id = $form_data['activityid'];
+         if ($id) {
+                    $row = $this->activityModel->getFull([
+                      'id' => $id
+                    ], true);
+                  } 
+
+              else{
+                      $row = $this->activityModel->createRow($form_data);
+                  }
+      /*   $return = $this->activityModel->save($form_data)->toArray();*/
+            try {
+            $this->db->beginTransaction();
+
+            $this->registryService->entrySave($row, $form_data);
+            $this->db->commit();
+            catch(Exception $e)
+            {
+
+            }
+            $this->flashMessage('success', 'Dodano wpis');
+
+    }
+}
